@@ -11,32 +11,16 @@ connectDB();
 const app = express();
 
 // ─── CORS Configuration ───────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'https://budget-tracking-1-ih5p.onrender.com',
-];
-
-const corsOptions = {
-    origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. curl, Postman, server-to-server)
-        if (!origin) return callback(null, true);
-
-        if (ALLOWED_ORIGINS.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error(`CORS policy: origin '${origin}' is not allowed`));
-        }
-    },
-    credentials: true,                          // Allow cookies / Authorization headers
+// Using array-based origin — cors() handles OPTIONS preflight automatically
+app.use(cors({
+    origin: [
+        'http://localhost:5173',
+        'https://budget-tracking-1-ih5p.onrender.com',
+    ],
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    optionsSuccessStatus: 204,                  // Some legacy browsers choke on 204
-};
-
-// Apply CORS globally and handle OPTIONS preflight for every route
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));            // ← explicit preflight handler
+}));
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Security middleware
@@ -63,7 +47,7 @@ app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'Smart Budget API is running 🚀', timestamp: new Date() });
 });
 
-// 404 handler
+// 404 handler (middleware-based — no wildcard route needed)
 app.use((req, res) => {
     res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
 });
