@@ -10,12 +10,37 @@ connectDB();
 
 const app = express();
 
+// ─── CORS Configuration ───────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'https://budget-tracking-1-ih5p.onrender.com',
+];
+
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+        if (!origin) return callback(null, true);
+
+        if (ALLOWED_ORIGINS.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS policy: origin '${origin}' is not allowed`));
+        }
+    },
+    credentials: true,                          // Allow cookies / Authorization headers
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    optionsSuccessStatus: 204,                  // Some legacy browsers choke on 204
+};
+
+// Apply CORS globally and handle OPTIONS preflight for every route
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));            // ← explicit preflight handler
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Security middleware
 app.use(helmet());
-app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-}));
 
 // Request logging
 if (process.env.NODE_ENV === 'development') {
