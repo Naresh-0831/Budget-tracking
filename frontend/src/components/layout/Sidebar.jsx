@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    LayoutDashboard, Receipt, BarChart2, PiggyBank, Settings, LogOut, TrendingUp, X, Brain
+    LayoutDashboard, Receipt, BarChart2, PiggyBank, Settings, LogOut, TrendingUp, X, Brain, Landmark
 } from 'lucide-react';
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
     { to: '/expenses', icon: Receipt, label: 'Expenses' },
     { to: '/analytics', icon: BarChart2, label: 'Analytics' },
     { to: '/savings', icon: PiggyBank, label: 'Savings Goals' },
+    { to: '/bank-accounts', icon: Landmark, label: 'Bank Accounts' },
     { to: '/budget-settings', icon: Settings, label: 'Budget Settings' },
     { to: '/ai-insights', icon: Brain, label: 'AI Insights' },
 ];

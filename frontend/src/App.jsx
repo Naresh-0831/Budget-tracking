@@ -11,6 +11,9 @@ import Savings from './pages/Savings';
 import BudgetSettings from './pages/BudgetSettings';
 import AIInsights from './pages/AIInsights';
 import SetupIncome from './pages/SetupIncome';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import BankAccounts from './pages/BankAccounts';
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0f0c29,#302b63)' }}>
@@ -60,6 +63,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Income setup gate – authenticated but no income yet */}
       <Route
@@ -73,6 +78,7 @@ function AppRoutes() {
         <Route path="expenses" element={<Expenses />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="savings" element={<Savings />} />
+        <Route path="bank-accounts" element={<BankAccounts />} />
         <Route path="budget-settings" element={<BudgetSettings />} />
         <Route path="ai-insights" element={<AIInsights />} />
       </Route>

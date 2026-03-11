@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Edit2, Trash2, X, Loader, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Loader, Search, Landmark } from 'lucide-react';
 
 const CATEGORIES = ['Food', 'Rent', 'Travel', 'Shopping', 'Bills', 'Others'];
 const TYPES = ['needs', 'wants', 'savings'];
@@ -22,7 +22,7 @@ function Modal({ title, onClose, children }) {
     );
 }
 
-const emptyForm = { title: '', amount: '', category: 'Food', type: 'needs', date: '', notes: '' };
+const emptyForm = { title: '', amount: '', category: 'Food', type: 'needs', date: '', notes: '', bankAccount: '' };
 
 export default function Expenses() {
     const [expenses, setExpenses] = useState([]);
@@ -33,6 +33,7 @@ export default function Expenses() {
     const [saving, setSaving] = useState(false);
     const [filter, setFilter] = useState({ category: '', type: '' });
     const [search, setSearch] = useState('');
+    const [bankAccounts, setBankAccounts] = useState([]);
 
     const fetchExpenses = async () => {
         try {
@@ -47,6 +48,11 @@ export default function Expenses() {
     };
 
     useEffect(() => { fetchExpenses(); }, [filter]);
+
+    // Fetch bank accounts for the selector
+    useEffect(() => {
+        api.get('/bank').then(({ data }) => setBankAccounts(data.accounts || [])).catch(() => { });
+    }, []);
 
     const openAdd = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
     const openEdit = (exp) => {
@@ -66,7 +72,11 @@ export default function Expenses() {
             } else {
                 const { data } = await api.post('/expenses', form);
                 setExpenses(prev => [data.expense, ...prev]);
-                toast.success('Expense added!');
+                if (data.warning) {
+                    toast('⚠️ ' + data.warning, { icon: null, style: { background: '#78350f', color: '#fef3c7', border: '1px solid #d97706' } });
+                } else {
+                    toast.success('Expense added!');
+                }
             }
             setShowModal(false);
         } catch (err) {
@@ -215,6 +225,23 @@ export default function Expenses() {
                             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2}
                                 className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500 transition resize-none" />
                         </div>
+                        {/* Bank account selector (Feature 4 - only for new expenses) */}
+                        {!editing && bankAccounts.length > 0 && (
+                            <div>
+                                <label className="text-slate-300 text-sm mb-1 flex items-center gap-1.5 block">
+                                    <Landmark size={14} className="text-indigo-400" /> Deduct from Bank Account (optional)
+                                </label>
+                                <select value={form.bankAccount} onChange={e => setForm(f => ({ ...f, bankAccount: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500 transition">
+                                    <option value="">No bank deduction</option>
+                                    {bankAccounts.map(acc => (
+                                        <option key={acc._id} value={acc._id}>
+                                            {acc.bankName} — {acc.maskedAccountNumber} (₹{Number(acc.currentBalance).toLocaleString('en-IN')})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <button type="submit" disabled={saving}
                             className="w-full py-2.5 rounded-xl gradient-bg text-white font-semibold text-sm hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
                             {saving ? <><Loader size={16} className="animate-spin" /> Saving...</> : editing ? 'Update Expense' : 'Add Expense'}

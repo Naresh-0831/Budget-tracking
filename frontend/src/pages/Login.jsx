@@ -111,6 +111,11 @@ export default function Login() {
                         >
                             {loading ? <><Loader className="animate-spin" size={18} /> Signing in...</> : 'Sign In'}
                         </button>
+                        <div className="text-right mt-1">
+                            <Link to="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 transition">
+                                Forgot password?
+                            </Link>
+                        </div>
                     </form>
 
                     <p className="mt-5 text-center text-sm text-slate-400">

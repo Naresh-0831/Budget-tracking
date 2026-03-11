@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Loader, Save, DollarSign } from 'lucide-react';
+import { Loader, Save, DollarSign, Shield, ShieldOff, Lock } from 'lucide-react';
 
 export default function BudgetSettings() {
     const { user, updateUser } = useAuth();
@@ -14,6 +14,12 @@ export default function BudgetSettings() {
     });
     const [currency, setCurrency] = useState(user?.currency || 'INR');
     const [saving, setSaving] = useState(false);
+
+    // Spending limits state (Feature 1)
+    const [monthlyLimit, setMonthlyLimit] = useState(user?.monthlyLimit || '');
+    const [dailyLimit, setDailyLimit] = useState(user?.dailyLimit || '');
+    const [lockEnabled, setLockEnabled] = useState(user?.lockEnabled ?? false);
+    const [savingLimits, setSavingLimits] = useState(false);
 
     const total = rules.needs + rules.wants + rules.savings;
 
@@ -52,6 +58,24 @@ export default function BudgetSettings() {
             toast.error(err.response?.data?.message || 'Error saving settings');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSaveLimits = async (e) => {
+        e.preventDefault();
+        setSavingLimits(true);
+        try {
+            const { data } = await api.put('/auth/spending-limits', {
+                monthlyLimit: parseFloat(monthlyLimit) || 0,
+                dailyLimit: parseFloat(dailyLimit) || 0,
+                lockEnabled,
+            });
+            updateUser({ ...user, ...data.user });
+            toast.success('Spending limits saved! 🔒');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Error saving limits');
+        } finally {
+            setSavingLimits(false);
         }
     };
 
@@ -180,6 +204,61 @@ export default function BudgetSettings() {
                 <button type="submit" disabled={saving || Math.round(total) !== 100}
                     className="w-full py-3 rounded-xl gradient-bg text-white font-semibold hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
                     {saving ? <><Loader size={18} className="animate-spin" /> Saving...</> : <><Save size={18} /> Save Budget Settings</>}
+                </button>
+            </form>
+
+            {/* ── Spending Limits Section (Feature 1) ──────────────────── */}
+            <form onSubmit={handleSaveLimits} className="glass rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                    <Lock size={18} className="text-indigo-400" />
+                    <h3 className="text-white font-semibold">Spending Limits</h3>
+                </div>
+                <p className="text-slate-400 text-sm">Set daily/monthly caps. Enable lock to block transactions that exceed limits.</p>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-slate-300 text-sm mb-1 block">Monthly Limit (₹)</label>
+                        <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input type="number" min="0" step="1" value={monthlyLimit}
+                                onChange={e => setMonthlyLimit(e.target.value)}
+                                placeholder="0 = disabled"
+                                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 transition" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-slate-300 text-sm mb-1 block">Daily Limit (₹)</label>
+                        <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input type="number" min="0" step="1" value={dailyLimit}
+                                onChange={e => setDailyLimit(e.target.value)}
+                                placeholder="0 = disabled"
+                                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 transition" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lock toggle */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center gap-3">
+                        {lockEnabled ? <Shield size={20} className="text-green-400" /> : <ShieldOff size={20} className="text-slate-500" />}
+                        <div>
+                            <p className="text-white text-sm font-medium">Spending Lock</p>
+                            <p className="text-slate-400 text-xs">
+                                {lockEnabled ? 'Transactions exceeding limits are rejected' : 'Warnings shown but transactions are allowed'}
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={() => setLockEnabled(!lockEnabled)}
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${lockEnabled ? 'bg-green-500' : 'bg-white/20'
+                            }`}>
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${lockEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                    </button>
+                </div>
+
+                <button type="submit" disabled={savingLimits}
+                    className="w-full py-3 rounded-xl gradient-bg text-white font-semibold hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 disabled:opacity-50">
+                    {savingLimits ? <><Loader size={18} className="animate-spin" /> Saving...</> : <><Shield size={18} /> Save Spending Limits</>}
                 </button>
             </form>
         </div>

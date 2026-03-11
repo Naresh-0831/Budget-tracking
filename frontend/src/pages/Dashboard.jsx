@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
     DollarSign, TrendingUp, TrendingDown, Wallet, Activity,
-    AlertTriangle, Info, Lightbulb, CheckCircle
+    AlertTriangle, Info, Lightbulb, CheckCircle, CalendarDays
 } from 'lucide-react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -181,6 +181,46 @@ export default function Dashboard() {
                     sub={`${data.savingsPercentage}% of income saved`}
                     color="#a855f7"
                 />
+            </div>
+
+            {/* Feature 2 — Smart Remaining Days row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="glass rounded-2xl p-5 card-hover" style={{ borderLeft: '3px solid #f59e0b40' }}>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#f59e0b20' }}>
+                            <CalendarDays size={20} style={{ color: '#f59e0b' }} />
+                        </div>
+                        <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Days Left This Month</p>
+                    </div>
+                    <p className="font-bold text-2xl text-white">{data.remainingDays ?? '—'} <span className="text-sm font-normal text-slate-400">days</span></p>
+                    <p className="text-slate-500 text-xs mt-1">Until end of month</p>
+                </div>
+                <div className="glass rounded-2xl p-5 card-hover" style={{ borderLeft: '3px solid #22d3ee40' }}>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#22d3ee20' }}>
+                            <TrendingDown size={20} style={{ color: '#22d3ee' }} />
+                        </div>
+                        <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Recommended Daily Spend</p>
+                    </div>
+                    <p className={`font-bold text-2xl ${(data.recommendedDailyLimit ?? 0) < 0 ? 'text-red-400' : 'text-white'}`}>
+                        {fmt(data.recommendedDailyLimit ?? 0)}
+                    </p>
+                    <p className="text-slate-500 text-xs mt-1">
+                        {data.monthlyLimit > 0 ? `Based on ₹${data.monthlyLimit.toLocaleString('en-IN')} monthly limit` : 'Based on your salary'}
+                    </p>
+                </div>
+                {data.dailyLimit > 0 && (
+                    <div className="glass rounded-2xl p-5 card-hover" style={{ borderLeft: '3px solid #f43f5e40' }}>
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#f43f5e20' }}>
+                                <Activity size={20} style={{ color: '#f43f5e' }} />
+                            </div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Daily Limit</p>
+                        </div>
+                        <p className="font-bold text-2xl text-white">{fmt(data.dailyLimit)}</p>
+                        <p className="text-slate-500 text-xs mt-1">{data.lockEnabled ? '🔒 Lock enabled' : '⚠️ Warning mode'}</p>
+                    </div>
+                )}
             </div>
 
             {/* Health + Pie + Alerts row */}
