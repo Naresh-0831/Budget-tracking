@@ -1,4 +1,32 @@
 const Expense = require('../models/Expense');
+const User = require('../models/User');
+const BankAccount = require('../models/BankAccount');
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Get total expenses for today (UTC-aware, using local date boundaries) */
+const getTodaySpent = async (userId) => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const result = await Expense.aggregate([
+        { $match: { user: userId, date: { $gte: startOfDay, $lt: endOfDay } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    return result[0]?.total || 0;
+};
+
+/** Get total expenses for the current calendar month */
+const getMonthSpent = async (userId) => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfNext = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const result = await Expense.aggregate([
+        { $match: { user: userId, date: { $gte: startOfMonth, $lt: startOfNext } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    return result[0]?.total || 0;
+};
 
 // @desc    Get all expenses for user
 // @route   GET /api/expenses
@@ -18,7 +46,7 @@ const getExpenses = async (req, res) => {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const [expenses, total] = await Promise.all([
-            Expense.find(query).sort({ date: -1 }).limit(parseInt(limit)).skip(skip),
+            Expense.find(query).populate('bankAccount', 'bankName maskedAccountNumber').sort({ date: -1 }).limit(parseInt(limit)).skip(skip),
             Expense.countDocuments(query),
         ]);
 
@@ -34,22 +62,64 @@ const getExpenses = async (req, res) => {
     }
 };
 
-// @desc    Create expense
+// @desc    Create expense (with spending-limit checks + bank deduction)
 // @route   POST /api/expenses
 // @access  Private
 const createExpense = async (req, res) => {
     try {
-        const { title, amount, category, type, date, notes } = req.body;
+        const { title, amount, category, type, date, notes, bankAccount: bankAccountId } = req.body;
+        const expenseAmount = parseFloat(amount);
+
+        // ── Feature 1: Spending limit checks ──────────────────────────────────
+        const user = await User.findById(req.user.id);
+        const { monthlyLimit, dailyLimit, lockEnabled } = user;
+
+        let warning = null;
+
+        if (dailyLimit > 0) {
+            const todaySpent = await getTodaySpent(user._id);
+            if (todaySpent + expenseAmount > dailyLimit) {
+                const msg = `Daily limit of ₹${dailyLimit} exceeded. Today spent: ₹${todaySpent.toFixed(2)}.`;
+                if (lockEnabled) {
+                    return res.status(400).json({ success: false, message: msg, limitType: 'daily' });
+                }
+                warning = warning ? warning + ' | ' + msg : msg;
+            }
+        }
+
+        if (monthlyLimit > 0) {
+            const monthSpent = await getMonthSpent(user._id);
+            if (monthSpent + expenseAmount > monthlyLimit) {
+                const msg = `Monthly limit of ₹${monthlyLimit} exceeded. Month spent: ₹${monthSpent.toFixed(2)}.`;
+                if (lockEnabled) {
+                    return res.status(400).json({ success: false, message: msg, limitType: 'monthly' });
+                }
+                warning = warning ? warning + ' | ' + msg : msg;
+            }
+        }
+
+        // ── Create the expense ────────────────────────────────────────────────
         const expense = await Expense.create({
             user: req.user.id,
             title,
-            amount,
+            amount: expenseAmount,
             category,
             type,
             date: date || Date.now(),
             notes,
+            bankAccount: bankAccountId || null,
         });
-        res.status(201).json({ success: true, expense });
+
+        // ── Feature 4: Deduct from linked bank account ────────────────────────
+        if (bankAccountId) {
+            const bankAccount = await BankAccount.findById(bankAccountId);
+            if (bankAccount && bankAccount.user.toString() === req.user.id) {
+                bankAccount.currentBalance -= expenseAmount;
+                await bankAccount.save();
+            }
+        }
+
+        res.status(201).json({ success: true, expense, ...(warning && { warning }) });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -72,7 +142,7 @@ const updateExpense = async (req, res) => {
     }
 };
 
-// @desc    Delete expense
+// @desc    Delete expense (refunds bank balance if linked)
 // @route   DELETE /api/expenses/:id
 // @access  Private
 const deleteExpense = async (req, res) => {
@@ -82,6 +152,16 @@ const deleteExpense = async (req, res) => {
         if (expense.user.toString() !== req.user.id) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
+
+        // ── Feature 4: Refund bank balance on delete ──────────────────────────
+        if (expense.bankAccount) {
+            const bankAccount = await BankAccount.findById(expense.bankAccount);
+            if (bankAccount && bankAccount.user.toString() === req.user.id) {
+                bankAccount.currentBalance += expense.amount;
+                await bankAccount.save();
+            }
+        }
+
         await expense.deleteOne();
         res.json({ success: true, message: 'Expense deleted' });
     } catch (error) {

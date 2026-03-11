@@ -33,6 +33,9 @@ const register = async (req, res) => {
                 email: user.email,
                 monthlySalary: user.monthlySalary,
                 budgetRules: user.budgetRules,
+                monthlyLimit: user.monthlyLimit,
+                dailyLimit: user.dailyLimit,
+                lockEnabled: user.lockEnabled,
                 currency: user.currency,
                 theme: user.theme,
             },
@@ -78,6 +81,9 @@ const login = async (req, res) => {
                 email: user.email,
                 monthlySalary: user.monthlySalary,
                 budgetRules: user.budgetRules,
+                monthlyLimit: user.monthlyLimit,
+                dailyLimit: user.dailyLimit,
+                lockEnabled: user.lockEnabled,
                 currency: user.currency,
                 theme: user.theme,
             },
@@ -183,6 +189,9 @@ const setIncome = async (req, res) => {
                 monthlySalary: user.monthlySalary,
                 incomeType: user.incomeType,
                 budgetRules: user.budgetRules,
+                monthlyLimit: user.monthlyLimit,
+                dailyLimit: user.dailyLimit,
+                lockEnabled: user.lockEnabled,
                 currency: user.currency,
                 theme: user.theme,
             },
@@ -192,4 +201,37 @@ const setIncome = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getMe, updateBudgetSettings, updateProfile, setIncome };
+// @desc    Update spending limits & lock
+// @route   PUT /api/auth/spending-limits
+// @access  Private
+const updateSpendingLimits = async (req, res) => {
+    try {
+        const { monthlyLimit, dailyLimit, lockEnabled } = req.body;
+
+        const updates = {};
+        if (monthlyLimit !== undefined) updates.monthlyLimit = parseFloat(monthlyLimit) || 0;
+        if (dailyLimit !== undefined) updates.dailyLimit = parseFloat(dailyLimit) || 0;
+        if (lockEnabled !== undefined) updates.lockEnabled = Boolean(lockEnabled);
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            updates,
+            { new: true, runValidators: true }
+        );
+
+        res.json({
+            success: true,
+            message: 'Spending limits updated',
+            user: {
+                id: user._id,
+                monthlyLimit: user.monthlyLimit,
+                dailyLimit: user.dailyLimit,
+                lockEnabled: user.lockEnabled,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = { register, login, getMe, updateBudgetSettings, updateProfile, setIncome, updateSpendingLimits };

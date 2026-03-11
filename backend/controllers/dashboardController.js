@@ -41,6 +41,14 @@ const getDashboard = async (req, res) => {
 
         const remainingBalance = salary - totalExpenses;
 
+        // ── Feature 2: Smart Remaining Days Logic ─────────────────────────────
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const remainingDays = Math.max(1, daysInMonth - now.getDate() + 1); // include today
+        // Use monthlyLimit if set, else fall back to salary
+        const effectiveLimit = user.monthlyLimit > 0 ? user.monthlyLimit : salary;
+        const smartBalance = effectiveLimit - totalExpenses;
+        const recommendedDailyLimit = parseFloat((smartBalance / remainingDays).toFixed(2));
+
         // Financial health score (0-100)
         let healthScore = 100;
         if (spending.needs > allocations.needs) healthScore -= 20;
@@ -99,6 +107,13 @@ const getDashboard = async (req, res) => {
                 healthScore,
                 alerts,
                 savingsPercentage: salary > 0 ? Math.round((spending.savings / salary) * 100) : 0,
+                // Feature 1 — limit settings
+                monthlyLimit: user.monthlyLimit,
+                dailyLimit: user.dailyLimit,
+                lockEnabled: user.lockEnabled,
+                // Feature 2 — smart remaining days
+                remainingDays,
+                recommendedDailyLimit,
             },
         });
     } catch (error) {

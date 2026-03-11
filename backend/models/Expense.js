@@ -35,6 +35,12 @@ const expenseSchema = new mongoose.Schema(
             type: String,
             maxlength: [200, 'Notes cannot exceed 200 characters'],
         },
+        // Optional bank account link (Feature 4)
+        bankAccount: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'BankAccount',
+            default: null,
+        },
     },
     { timestamps: true }
 );

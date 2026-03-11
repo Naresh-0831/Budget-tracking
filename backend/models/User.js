@@ -44,6 +44,13 @@ const userSchema = new mongoose.Schema(
             wants: { type: Number, default: 30 },
             savings: { type: Number, default: 20 },
         },
+        // Spending limits (Feature 1)
+        monthlyLimit: { type: Number, default: 0 },
+        dailyLimit: { type: Number, default: 0 },
+        lockEnabled: { type: Boolean, default: false },
+        // Forgot-password OTP (Feature 3)
+        resetOtp: { type: String, select: false },
+        otpExpiry: { type: Date, select: false },
         theme: {
             type: String,
             enum: ['light', 'dark'],
